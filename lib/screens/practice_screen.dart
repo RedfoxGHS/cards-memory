@@ -10,8 +10,14 @@ import 'practice_summary_screen.dart';
 class PracticeScreen extends StatefulWidget {
   final List<Flashcard> cards;
   final Category? category;
+  final List<bool>? reversedFlags;
 
-  const PracticeScreen({super.key, required this.cards, this.category});
+  const PracticeScreen({
+    super.key,
+    required this.cards,
+    this.category,
+    this.reversedFlags,
+  });
 
   @override
   State<PracticeScreen> createState() => _PracticeScreenState();
@@ -91,6 +97,8 @@ class _PracticeScreenState extends State<PracticeScreen> {
                         frontLabel: _currentCategory.frontLabel,
                         backLabel: _currentCategory.backLabel,
                         flipped: _flipped,
+                        reversed: widget.reversedFlags?[_index] ?? false,
+                        isLibras: _currentCategory.isLibras,
                         onTap: () => setState(() => _flipped = !_flipped),
                       ),
                     ),

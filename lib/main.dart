@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:fvp/fvp.dart' as fvp;
 import 'package:provider/provider.dart';
 
 import 'providers/app_state.dart';
@@ -6,6 +8,14 @@ import 'screens/home_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  // video_player has no built-in Windows/Linux implementation; fvp backs it
+  // with libmpv on desktop so VideoPlayerController works on every platform.
+  if (!kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.windows ||
+          defaultTargetPlatform == TargetPlatform.linux ||
+          defaultTargetPlatform == TargetPlatform.macOS)) {
+    fvp.registerWith();
+  }
   runApp(const CardsMemoryApp());
 }
 

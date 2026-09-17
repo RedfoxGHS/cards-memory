@@ -4,6 +4,7 @@ class Category {
   final String frontLabel;
   final String backLabel;
   final int colorValue;
+  final bool isLibras;
   final DateTime createdAt;
 
   Category({
@@ -12,6 +13,7 @@ class Category {
     this.frontLabel = 'Palavra',
     this.backLabel = 'Significado',
     required this.colorValue,
+    this.isLibras = false,
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
@@ -21,6 +23,7 @@ class Category {
     String? frontLabel,
     String? backLabel,
     int? colorValue,
+    bool? isLibras,
   }) {
     return Category(
       id: id ?? this.id,
@@ -28,6 +31,7 @@ class Category {
       frontLabel: frontLabel ?? this.frontLabel,
       backLabel: backLabel ?? this.backLabel,
       colorValue: colorValue ?? this.colorValue,
+      isLibras: isLibras ?? this.isLibras,
       createdAt: createdAt,
     );
   }
@@ -39,6 +43,7 @@ class Category {
       'frontLabel': frontLabel,
       'backLabel': backLabel,
       'colorValue': colorValue,
+      'isLibras': isLibras ? 1 : 0,
       'createdAt': createdAt.toIso8601String(),
     };
   }
@@ -50,6 +55,7 @@ class Category {
       frontLabel: map['frontLabel'] as String? ?? 'Palavra',
       backLabel: map['backLabel'] as String? ?? 'Significado',
       colorValue: map['colorValue'] as int,
+      isLibras: (map['isLibras'] as int? ?? 0) == 1,
       createdAt: DateTime.parse(map['createdAt'] as String),
     );
   }

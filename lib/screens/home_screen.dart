@@ -34,7 +34,10 @@ class HomeScreen extends StatelessWidget {
       body: state.loading
           ? const Center(child: CircularProgressIndicator())
           : state.categories.isEmpty
-              ? _EmptyState(onCreate: () => _createCategory(context))
+              ? _EmptyState(
+                  onCreate: () => _createCategory(context),
+                  onCreateLibras: () => _createCategory(context, libras: true),
+                )
               : RefreshIndicator(
                   onRefresh: state.load,
                   child: ListView(
@@ -71,9 +74,11 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  void _createCategory(BuildContext context) {
+  void _createCategory(BuildContext context, {bool libras = false}) {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const CategoryFormScreen()),
+      MaterialPageRoute(
+        builder: (_) => CategoryFormScreen(presetLibras: libras),
+      ),
     );
   }
 }
@@ -153,8 +158,9 @@ class _CategoryTile extends StatelessWidget {
 
 class _EmptyState extends StatelessWidget {
   final VoidCallback onCreate;
+  final VoidCallback onCreateLibras;
 
-  const _EmptyState({required this.onCreate});
+  const _EmptyState({required this.onCreate, required this.onCreateLibras});
 
   @override
   Widget build(BuildContext context) {
@@ -181,6 +187,12 @@ class _EmptyState extends StatelessWidget {
               onPressed: onCreate,
               icon: const Icon(Icons.add),
               label: const Text('Criar biblioteca'),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: onCreateLibras,
+              icon: const Icon(Icons.sign_language_outlined),
+              label: const Text('Criar biblioteca de Libras'),
             ),
           ],
         ),

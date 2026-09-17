@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -5,6 +7,17 @@ import '../data/repository.dart';
 import '../models/category.dart';
 import '../providers/app_state.dart';
 import 'practice_screen.dart';
+
+enum PracticeMode {
+  normal('Normal', 'Mostra a frente primeiro'),
+  reverso('Reverso', 'Mostra o verso primeiro'),
+  misto('Misto', 'Sorteia o lado a cada cartão');
+
+  final String label;
+  final String description;
+
+  const PracticeMode(this.label, this.description);
+}
 
 class PracticeSetupScreen extends StatefulWidget {
   final Category? initialCategory;
@@ -18,6 +31,7 @@ class PracticeSetupScreen extends StatefulWidget {
 class _PracticeSetupScreenState extends State<PracticeSetupScreen> {
   Category? _selectedCategory;
   double _count = 10;
+  PracticeMode _mode = PracticeMode.normal;
   bool _starting = false;
 
   @override
@@ -54,6 +68,23 @@ class _PracticeSetupScreenState extends State<PracticeSetupScreen> {
               onChanged: (value) => setState(() => _selectedCategory = value),
             ),
             const SizedBox(height: 28),
+            Text('Modo', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            SegmentedButton<PracticeMode>(
+              segments: [
+                for (final mode in PracticeMode.values)
+                  ButtonSegment(value: mode, label: Text(mode.label)),
+              ],
+              selected: {_mode},
+              onSelectionChanged: (selection) =>
+                  setState(() => _mode = selection.first),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _mode.description,
+              style: const TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 28),
             Text(
               'Quantidade de palavras: ${_count.round()}',
               style: Theme.of(context).textTheme.titleMedium,
@@ -61,8 +92,8 @@ class _PracticeSetupScreenState extends State<PracticeSetupScreen> {
             Slider(
               value: _count,
               min: 10,
-              max: 20,
-              divisions: 10,
+              max: 30,
+              divisions: 20,
               label: _count.round().toString(),
               onChanged: (v) => setState(() => _count = v),
             ),
@@ -103,11 +134,23 @@ class _PracticeSetupScreenState extends State<PracticeSetupScreen> {
         );
         return;
       }
+      final random = Random();
+      final reversedFlags = List<bool>.generate(cards.length, (i) {
+        switch (_mode) {
+          case PracticeMode.normal:
+            return false;
+          case PracticeMode.reverso:
+            return true;
+          case PracticeMode.misto:
+            return random.nextBool();
+        }
+      });
       await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => PracticeScreen(
             cards: cards,
             category: _selectedCategory,
+            reversedFlags: reversedFlags,
           ),
         ),
       );

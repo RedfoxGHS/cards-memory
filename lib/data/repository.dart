@@ -43,11 +43,13 @@ class Repository {
 
   Future<void> deleteCategory(int categoryId) async {
     final db = await _db;
-    // Delete image files belonging to this category's cards first.
+    // Delete media files belonging to this category's cards first.
     final cards = await getFlashcards(categoryId);
     for (final card in cards) {
-      await _deleteImageFile(card.frontImagePath);
-      await _deleteImageFile(card.backImagePath);
+      await _deleteMediaFile(card.frontImagePath);
+      await _deleteMediaFile(card.frontVideoPath);
+      await _deleteMediaFile(card.backImagePath);
+      await _deleteMediaFile(card.backVideoPath);
     }
     await db.delete('categories', where: 'id = ?', whereArgs: [categoryId]);
   }
@@ -98,8 +100,10 @@ class Repository {
 
   Future<void> deleteFlashcard(Flashcard card) async {
     final db = await _db;
-    await _deleteImageFile(card.frontImagePath);
-    await _deleteImageFile(card.backImagePath);
+    await _deleteMediaFile(card.frontImagePath);
+    await _deleteMediaFile(card.frontVideoPath);
+    await _deleteMediaFile(card.backImagePath);
+    await _deleteMediaFile(card.backVideoPath);
     await db.delete('flashcards', where: 'id = ?', whereArgs: [card.id]);
   }
 
@@ -125,7 +129,7 @@ class Repository {
     return all.take(count).toList();
   }
 
-  // ---------- Images ----------
+  // ---------- Media ----------
 
   Future<String> saveImageFile(File sourceFile) async {
     final dirPath = await DatabaseHelper.instance.imagesDirPath();
@@ -136,11 +140,50 @@ class Repository {
     return destPath;
   }
 
-  Future<void> _deleteImageFile(String? path) async {
+  Future<String> saveImageBytes(List<int> bytes, {String ext = '.jpg'}) async {
+    final dirPath = await DatabaseHelper.instance.imagesDirPath();
+    final destPath = p.join(dirPath, '${_uuid.v4()}$ext');
+    await File(destPath).writeAsBytes(bytes);
+    return destPath;
+  }
+
+  Future<String> saveVideoBytes(List<int> bytes, {String ext = '.mp4'}) async {
+    final dirPath = await DatabaseHelper.instance.videosDirPath();
+    final destPath = p.join(dirPath, '${_uuid.v4()}$ext');
+    await File(destPath).writeAsBytes(bytes);
+    return destPath;
+  }
+
+  Future<void> _deleteMediaFile(String? path) async {
     if (path == null) return;
     final file = File(path);
     if (await file.exists()) {
       await file.delete();
     }
+  }
+
+  // ---------- Libras dictionary choices ----------
+
+  /// Remembers which dictionary entry the user picked for a given typed
+  /// word, so future lookups skip the disambiguation dialog.
+  Future<void> setLibrasChoice(String wordKey, int entryId) async {
+    final db = await _db;
+    await db.insert(
+      'libras_choices',
+      {'wordKey': wordKey, 'entryId': entryId},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<int?> getLibrasChoice(String wordKey) async {
+    final db = await _db;
+    final rows = await db.query(
+      'libras_choices',
+      where: 'wordKey = ?',
+      whereArgs: [wordKey],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return rows.first['entryId'] as int;
   }
 }

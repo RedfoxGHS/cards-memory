@@ -4,13 +4,19 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../models/flashcard.dart';
+import 'video_preview.dart';
 
 /// A tappable flashcard that flips between its front and back faces.
+///
+/// [reversed] swaps which side (front/back) is shown first, independent of
+/// the flip animation direction — used by the Reverso/Misto practice modes.
 class FlashcardWidget extends StatefulWidget {
   final Flashcard card;
   final String frontLabel;
   final String backLabel;
   final bool flipped;
+  final bool reversed;
+  final bool isLibras;
   final VoidCallback onTap;
 
   const FlashcardWidget({
@@ -19,6 +25,8 @@ class FlashcardWidget extends StatefulWidget {
     required this.frontLabel,
     required this.backLabel,
     required this.flipped,
+    this.reversed = false,
+    this.isLibras = false,
     required this.onTap,
   });
 
@@ -53,6 +61,29 @@ class _FlashcardWidgetState extends State<FlashcardWidget>
 
   @override
   Widget build(BuildContext context) {
+    final card = widget.card;
+    final scheme = Theme.of(context).colorScheme;
+    final frontFace = _CardFace(
+      label: widget.frontLabel,
+      text: card.frontText,
+      imagePath: card.frontImagePath,
+      videoPath: card.frontVideoPath,
+      color: scheme.primaryContainer,
+      textColor: scheme.onPrimaryContainer,
+      videoOnly: widget.isLibras && card.frontVideoPath != null,
+    );
+    final backFace = _CardFace(
+      label: widget.backLabel,
+      text: card.backText,
+      imagePath: card.backImagePath,
+      videoPath: card.backVideoPath,
+      color: scheme.secondaryContainer,
+      textColor: scheme.onSecondaryContainer,
+      videoOnly: widget.isLibras && card.backVideoPath != null,
+    );
+    final firstFace = widget.reversed ? backFace : frontFace;
+    final secondFace = widget.reversed ? frontFace : backFace;
+
     return GestureDetector(
       onTap: widget.onTap,
       child: Center(
@@ -62,32 +93,14 @@ class _FlashcardWidgetState extends State<FlashcardWidget>
             animation: _controller,
             builder: (context, child) {
               final angle = _controller.value * pi;
-              final showFront = angle < pi / 2;
-              final displayAngle = showFront ? angle : angle - pi;
+              final showFirst = angle < pi / 2;
+              final displayAngle = showFirst ? angle : angle - pi;
               return Transform(
                 alignment: Alignment.center,
                 transform: Matrix4.identity()
                   ..setEntry(3, 2, 0.0012)
                   ..rotateY(displayAngle),
-                child: showFront
-                    ? _CardFace(
-                        label: widget.frontLabel,
-                        text: widget.card.frontText,
-                        imagePath: widget.card.frontImagePath,
-                        color: Theme.of(context).colorScheme.primaryContainer,
-                        textColor:
-                            Theme.of(context).colorScheme.onPrimaryContainer,
-                      )
-                    : _CardFace(
-                        label: widget.backLabel,
-                        text: widget.card.backText,
-                        imagePath: widget.card.backImagePath,
-                        color:
-                            Theme.of(context).colorScheme.secondaryContainer,
-                        textColor: Theme.of(context)
-                            .colorScheme
-                            .onSecondaryContainer,
-                      ),
+                child: showFirst ? firstFace : secondFace,
               );
             },
           ),
@@ -101,19 +114,50 @@ class _CardFace extends StatelessWidget {
   final String label;
   final String text;
   final String? imagePath;
+  final String? videoPath;
   final Color color;
   final Color textColor;
+  final bool videoOnly;
 
   const _CardFace({
     required this.label,
     required this.text,
     required this.imagePath,
+    required this.videoPath,
     required this.color,
     required this.textColor,
+    this.videoOnly = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final hasMedia = videoPath != null || imagePath != null;
+    final hasText = !videoOnly && text.trim().isNotEmpty;
+    final media = ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: videoPath != null
+          ? VideoPreview(path: videoPath!)
+          : Image.file(
+              File(imagePath!),
+              fit: BoxFit.contain,
+              width: double.infinity,
+            ),
+    );
+
+    if (videoOnly) {
+      // The sign itself is the whole answer — no label, no caption.
+      return Card(
+        color: color,
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: media,
+        ),
+      );
+    }
+
     return Card(
       color: color,
       elevation: 4,
@@ -131,26 +175,17 @@ class _CardFace extends StatelessWidget {
                   ),
             ),
             const SizedBox(height: 16),
-            if (imagePath != null)
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.file(
-                    File(imagePath!),
-                    fit: BoxFit.contain,
-                    width: double.infinity,
-                  ),
-                ),
+            if (hasMedia) Expanded(child: media),
+            if (hasMedia && hasText) const SizedBox(height: 16),
+            if (hasText)
+              Text(
+                text,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                    ),
               ),
-            if (imagePath != null) const SizedBox(height: 16),
-            Text(
-              text,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: textColor,
-                  ),
-            ),
           ],
         ),
       ),

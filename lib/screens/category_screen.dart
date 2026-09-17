@@ -174,15 +174,16 @@ class _CardTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final practiced = card.timesPracticed;
     final errorPct = practiced == 0 ? 0 : (card.errorRate * 100).round();
+    final thumbnailPath = card.frontImagePath ?? card.backImagePath;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundImage: card.frontImagePath != null
-              ? FileImage(File(card.frontImagePath!))
+          backgroundImage: thumbnailPath != null
+              ? FileImage(File(thumbnailPath))
               : null,
-          child: card.frontImagePath == null
+          child: thumbnailPath == null
               ? Text(card.frontText.isNotEmpty ? card.frontText[0].toUpperCase() : '?')
               : null,
         ),

@@ -5,9 +5,12 @@ import 'package:flutter/foundation.dart' hide Category;
 import '../data/repository.dart';
 import '../models/category.dart';
 import '../models/flashcard.dart';
+import '../models/libras_entry.dart';
+import '../services/libras_dictionary_service.dart';
 
 class AppState extends ChangeNotifier {
   final Repository _repo = Repository.instance;
+  final LibrasDictionaryService _libras = LibrasDictionaryService.instance;
 
   List<Category> _categories = [];
   final Map<int, int> _cardCounts = {};
@@ -35,6 +38,7 @@ class AppState extends ChangeNotifier {
     required String frontLabel,
     required String backLabel,
     required int colorValue,
+    bool isLibras = false,
   }) async {
     final category = await _repo.createCategory(
       Category(
@@ -42,6 +46,7 @@ class AppState extends ChangeNotifier {
         frontLabel: frontLabel,
         backLabel: backLabel,
         colorValue: colorValue,
+        isLibras: isLibras,
       ),
     );
     await load();
@@ -66,11 +71,15 @@ class AppState extends ChangeNotifier {
     required int categoryId,
     required String frontText,
     File? frontImage,
+    String? frontImagePath,
+    String? frontVideoPath,
     required String backText,
     File? backImage,
+    String? backImagePath,
+    String? backVideoPath,
   }) async {
-    String? frontPath;
-    String? backPath;
+    String? frontPath = frontImagePath;
+    String? backPath = backImagePath;
     if (frontImage != null) {
       frontPath = await _repo.saveImageFile(frontImage);
     }
@@ -82,8 +91,10 @@ class AppState extends ChangeNotifier {
         categoryId: categoryId,
         frontText: frontText,
         frontImagePath: frontPath,
+        frontVideoPath: frontVideoPath,
         backText: backText,
         backImagePath: backPath,
+        backVideoPath: backVideoPath,
       ),
     );
     _cardCounts[categoryId] = (_cardCounts[categoryId] ?? 0) + 1;
@@ -95,13 +106,21 @@ class AppState extends ChangeNotifier {
     Flashcard existing, {
     required String frontText,
     File? newFrontImage,
+    String? newFrontImagePath,
     bool removeFrontImage = false,
+    String? newFrontVideoPath,
+    bool removeFrontVideo = false,
     required String backText,
     File? newBackImage,
+    String? newBackImagePath,
     bool removeBackImage = false,
+    String? newBackVideoPath,
+    bool removeBackVideo = false,
   }) async {
-    String? frontPath = existing.frontImagePath;
-    String? backPath = existing.backImagePath;
+    String? frontPath = newFrontImagePath ?? existing.frontImagePath;
+    String? backPath = newBackImagePath ?? existing.backImagePath;
+    String? frontVideo = newFrontVideoPath ?? existing.frontVideoPath;
+    String? backVideo = newBackVideoPath ?? existing.backVideoPath;
 
     if (newFrontImage != null) {
       frontPath = await _repo.saveImageFile(newFrontImage);
@@ -115,13 +134,20 @@ class AppState extends ChangeNotifier {
       backPath = null;
     }
 
+    if (removeFrontVideo) frontVideo = null;
+    if (removeBackVideo) backVideo = null;
+
     final updated = existing.copyWith(
       frontText: frontText,
       backText: backText,
       frontImagePath: frontPath,
       clearFrontImage: frontPath == null,
+      frontVideoPath: frontVideo,
+      clearFrontVideo: frontVideo == null,
       backImagePath: backPath,
       clearBackImage: backPath == null,
+      backVideoPath: backVideo,
+      clearBackVideo: backVideo == null,
     );
     await _repo.updateFlashcard(updated);
   }
@@ -147,5 +173,43 @@ class AppState extends ChangeNotifier {
   Future<int> totalCardCount() async {
     final all = await _repo.getAllFlashcards();
     return all.length;
+  }
+
+  // ---------- Libras dictionary ----------
+
+  /// All dictionary entries matching [word] (e.g. ABRIR1/ABRIR2 for "abrir").
+  Future<List<LibrasEntry>> findLibrasMatches(String word) {
+    return _libras.findMatches(word);
+  }
+
+  /// The entry previously chosen by the user for this exact word, if any.
+  Future<LibrasEntry?> rememberedLibrasChoice(String word) async {
+    final key = LibrasDictionaryService.normalize(word);
+    final entryId = await _repo.getLibrasChoice(key);
+    if (entryId == null) return null;
+    return _libras.findById(entryId);
+  }
+
+  Future<void> rememberLibrasChoice(String word, LibrasEntry entry) {
+    final key = LibrasDictionaryService.normalize(word);
+    return _repo.setLibrasChoice(key, entry.id);
+  }
+
+  String? librasImageUrl(LibrasEntry entry) => _libras.imageUrl(entry);
+
+  /// Downloads the entry's video (and image, when available) and stores
+  /// them locally, returning their on-disk paths.
+  Future<({String videoPath, String? imagePath})> downloadLibrasMedia(
+    LibrasEntry entry,
+  ) async {
+    final videoBytes = await _libras.downloadVideo(entry);
+    final videoPath = await _repo.saveVideoBytes(videoBytes);
+
+    String? imagePath;
+    final imageBytes = await _libras.downloadImage(entry);
+    if (imageBytes != null) {
+      imagePath = await _repo.saveImageBytes(imageBytes);
+    }
+    return (videoPath: videoPath, imagePath: imagePath);
   }
 }

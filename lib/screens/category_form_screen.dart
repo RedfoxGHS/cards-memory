@@ -17,8 +17,13 @@ const _palette = <Color>[
 
 class CategoryFormScreen extends StatefulWidget {
   final Category? category;
+  final bool presetLibras;
 
-  const CategoryFormScreen({super.key, this.category});
+  const CategoryFormScreen({
+    super.key,
+    this.category,
+    this.presetLibras = false,
+  });
 
   @override
   State<CategoryFormScreen> createState() => _CategoryFormScreenState();
@@ -30,6 +35,7 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
   late final TextEditingController _frontLabelController;
   late final TextEditingController _backLabelController;
   late Color _selectedColor;
+  late bool _isLibras;
   bool _saving = false;
 
   bool get _isEditing => widget.category != null;
@@ -37,9 +43,13 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.category?.name);
+    _isLibras = widget.category?.isLibras ?? widget.presetLibras;
+    _nameController = TextEditingController(
+      text: widget.category?.name ?? (widget.presetLibras ? 'Libras' : null),
+    );
     _frontLabelController = TextEditingController(
-      text: widget.category?.frontLabel ?? 'Palavra',
+      text: widget.category?.frontLabel ??
+          (widget.presetLibras ? 'Sinal' : 'Palavra'),
     );
     _backLabelController = TextEditingController(
       text: widget.category?.backLabel ?? 'Significado',
@@ -69,6 +79,7 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
             frontLabel: _frontLabelController.text.trim(),
             backLabel: _backLabelController.text.trim(),
             colorValue: _selectedColor.toARGB32(),
+            isLibras: _isLibras,
           ),
         );
       } else {
@@ -77,6 +88,7 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
           frontLabel: _frontLabelController.text.trim(),
           backLabel: _backLabelController.text.trim(),
           colorValue: _selectedColor.toARGB32(),
+          isLibras: _isLibras,
         );
       }
       if (mounted) Navigator.of(context).pop();
@@ -144,6 +156,17 @@ class _CategoryFormScreenState extends State<CategoryFormScreen> {
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 24),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: _isLibras,
+              onChanged: (v) => setState(() => _isLibras = v),
+              title: const Text('Biblioteca de Libras'),
+              subtitle: const Text(
+                'Ao adicionar um cartão, busca o sinal (vídeo) no dicionário '
+                'oficial do INES em vez de pedir uma foto manual.',
+              ),
+            ),
+            const SizedBox(height: 8),
             Text('Cor', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 12),
             Wrap(
