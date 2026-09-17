@@ -133,18 +133,20 @@ class _CardFace extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasMedia = videoPath != null || imagePath != null;
     final hasText = !videoOnly && text.trim().isNotEmpty;
-    final media = ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: videoPath != null
-          ? VideoPreview(path: videoPath!)
-          : Image.file(
-              File(imagePath!),
-              fit: BoxFit.contain,
-              width: double.infinity,
-            ),
-    );
+    final media = !hasMedia
+        ? null
+        : ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: videoPath != null
+                ? VideoPreview(path: videoPath!)
+                : Image.file(
+                    File(imagePath!),
+                    fit: BoxFit.contain,
+                    width: double.infinity,
+                  ),
+          );
 
-    if (videoOnly) {
+    if (videoOnly && media != null) {
       // The sign itself is the whole answer — no label, no caption.
       return Card(
         color: color,
@@ -175,7 +177,7 @@ class _CardFace extends StatelessWidget {
                   ),
             ),
             const SizedBox(height: 16),
-            if (hasMedia) Expanded(child: media),
+            if (media != null) Expanded(child: media),
             if (hasMedia && hasText) const SizedBox(height: 16),
             if (hasText)
               Text(
