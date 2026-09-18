@@ -156,8 +156,9 @@ class _CardFormScreenState extends State<CardFormScreen> {
 
   Future<LibrasEntry?> _pickLibrasVariant(
     List<LibrasEntry> matches,
-    AppState state,
-  ) {
+    AppState state, {
+    int? selectedId,
+  }) {
     return showDialog<LibrasEntry>(
       context: context,
       builder: (context) => AlertDialog(
@@ -184,6 +185,12 @@ class _CardFormScreenState extends State<CardFormScreen> {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
+                trailing: entry.id == selectedId
+                    ? Icon(
+                        Icons.check_circle,
+                        color: Theme.of(context).colorScheme.primary,
+                      )
+                    : null,
                 onTap: () => Navigator.of(context).pop(entry),
               );
             },
@@ -199,6 +206,44 @@ class _CardFormScreenState extends State<CardFormScreen> {
     );
   }
 
+  /// Lets the user pick a different sign for the current word, even when
+  /// one was already chosen and remembered before.
+  Future<void> _changeLibrasVariant() async {
+    final word = _frontController.text.trim();
+    if (word.isEmpty) return;
+    setState(() {
+      _librasBusy = true;
+      _librasError = null;
+    });
+    final state = context.read<AppState>();
+    try {
+      final matches = await state.findLibrasMatches(word);
+      if (matches.isEmpty) {
+        setState(() {
+          _librasError = 'Palavra não encontrada no dicionário do INES.';
+        });
+        return;
+      }
+      if (matches.length == 1) {
+        await _applyLibrasEntry(matches.first);
+        return;
+      }
+      final remembered = await state.rememberedLibrasChoice(word);
+      final picked = await _pickLibrasVariant(
+        matches,
+        state,
+        selectedId: remembered?.id,
+      );
+      if (picked == null) return;
+      await state.rememberLibrasChoice(word, picked);
+      await _applyLibrasEntry(picked);
+    } catch (e) {
+      setState(() => _librasError = 'Erro ao consultar o dicionário: $e');
+    } finally {
+      if (mounted) setState(() => _librasBusy = false);
+    }
+  }
+
   Future<void> _applyLibrasEntry(LibrasEntry entry) async {
     setState(() => _librasBusy = true);
     try {
@@ -211,6 +256,7 @@ class _CardFormScreenState extends State<CardFormScreen> {
         _newBackImagePath = media.imagePath;
         _removeBackImage = false;
         _frontController.text = entry.palavra;
+        _backController.text = entry.descricao;
       });
     } catch (e) {
       if (mounted) {
@@ -442,9 +488,19 @@ class _CardFormScreenState extends State<CardFormScreen> {
               Positioned(
                 top: 4,
                 right: 4,
-                child: IconButton.filledTonal(
-                  onPressed: _clearLibrasMedia,
-                  icon: const Icon(Icons.close),
+                child: Row(
+                  children: [
+                    IconButton.filledTonal(
+                      onPressed: _librasBusy ? null : _changeLibrasVariant,
+                      icon: const Icon(Icons.swap_horiz),
+                      tooltip: 'Trocar sinal',
+                    ),
+                    const SizedBox(width: 4),
+                    IconButton.filledTonal(
+                      onPressed: _clearLibrasMedia,
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
                 ),
               ),
             ],
