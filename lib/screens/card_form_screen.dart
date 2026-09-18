@@ -255,7 +255,6 @@ class _CardFormScreenState extends State<CardFormScreen> {
         _removeBackVideo = false;
         _newBackImagePath = media.imagePath;
         _removeBackImage = false;
-        _frontController.text = entry.palavra;
         _backController.text = entry.descricao;
       });
     } catch (e) {
